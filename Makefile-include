@@ -1,0 +1,9 @@
+test: all
+	cd tests && ./test_jl.sh
+scan.lex: parse.h
+
+clean-test:
+	-rm -f tests/examples/good/*.o tests/examples/good/*.qua tests/examples/good/*.asm \
+	   $(subst .o,,$(wildcard tests/examples/good/*.o))
+
+cleanall: clean clean-test

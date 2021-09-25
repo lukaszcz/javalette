@@ -1,0 +1,328 @@
+#
+# Peephole optimization rules for i386.
+#
+
+%%definitions
+
+ignorecase = 1
+reg = 'eax|ebx|ecx|edx|edi|esi|ebp|esp'
+regmul = '(1|2|4|8)*$(reg)'
+const0 = '[0-9]+'
+const = '-?[0-9]+'
+fpuop = 'fadd|fsub|fmul|fdiv|fsubr|fdivr'
+
+
+
+##################################################
+# peephole - phase 1
+
+%%newphase
+
+
+##############################
+# add/sub/inc/dec
+
+%%
+add %1%, -%2:const0%
+%%
+sub %1%, %2%
+%%
+
+%%
+sub %1%, -%2:const0%
+%%
+add %1%, %2%
+%%
+
+%%
+add %1%, 1
+%%
+inc %1%
+%%
+
+%%
+sub %1%, 1
+%%
+dec %1%
+%%
+
+
+##############################
+# imul
+
+%%
+imul %1%, 0
+%%
+mov %1%, 0
+%%
+
+%%
+imul %1%, 1
+%%
+%%
+
+%%
+imul %1%, 2
+%%
+sal %1%, 1
+%%
+
+%%
+imul %1%, 4
+%%
+sal %1%, 2
+%%
+
+%%
+imul %1%, 8
+%%
+sal %1%, 3
+%%
+
+%%
+imul %1%, 16
+%%
+sal %1%, 4
+%%
+
+%%
+imul %1%, 32
+%%
+sal %1%, 5
+%%
+
+%%
+imul %1%, 64
+%%
+sal %1%, 6
+%%
+
+%%
+imul %1%, 128
+%%
+sal %1%, 7
+%%
+
+%%
+imul %1%, 256
+%%
+sal %1%, 8
+%%
+
+%%
+imul %1%, 512
+%%
+sal %1%, 9
+%%
+
+%%
+imul %1%, 1024
+%%
+sal %1%, 10
+%%
+
+%%
+imul %1%, 2048
+%%
+sal %1%, 11
+%%
+
+%%
+imul %1%, 4096
+%%
+sal %1%, 12
+%%
+
+%%
+imul %1%, 8192
+%%
+sal %1%, 13
+%%
+
+%%
+imul %1%, 16384
+%%
+sal %1%, 14
+%%
+
+%%
+imul %1%, 32768
+%%
+sal %1%, 15
+%%
+
+%%
+imul %1%, 65536
+%%
+sal %1%, 16
+%%
+
+# etc.
+
+%%
+imul %1:reg%, 3
+%%
+lea %1%, [%1% + 2 * %1%]
+%%
+
+%%
+imul %1:reg%, 5
+%%
+lea %1%, [%1% + 4 * %1%]
+%%
+
+%%
+imul %1:reg%, 6
+%%
+lea %1%, [%1% + 2 * %1%]
+add %1%, %1%
+%%
+
+%%
+imul %1:reg%, 9
+%%
+lea %1%, [%1% + 8 * %1%]
+%%
+
+%%
+imul %1:reg%, 10
+%%
+lea %1%, [%1% + 4 * %1%]
+add %1%, %1%
+%%
+
+
+##############################
+# lea
+
+# order
+
+%%
+lea %1:reg%, %:.*% [%2:const% + %3:regmul%]
+%%
+lea %1:reg%, [%3% + %2%]
+%%
+
+%%
+lea %1:reg%, %:.*% [%2:regmul + %3:reg]
+%%
+lea %1:reg%, [%3% + %2%]
+%%
+
+# mov + add/sub -> lea
+
+%%
+mov %1:reg%, %2:reg%
+add %1:reg%, %3:reg%
+%%
+lea %1%, [%2% + %3%]
+%%
+
+%%
+mov %1:reg%, %2:const%
+add %1:reg%, %3:reg%
+%%
+lea %1%, [%3% + %2%]
+%%
+
+%%
+mov %1:reg%, %2:reg%
+add %1:reg%, %3:const%
+%%
+lea %1%, [%2% + %3%]
+%%
+
+%%
+mov %1:reg%, %2:reg%
+sub %1:reg%, %3:const%
+%%
+lea %1%, [%2% - %3%]
+%%
+
+# lea + add/sub -> lea
+
+%%
+lea %1:reg%, %:.*% [%2:reg% + %3:regmul%]
+add %1:reg%, %4:const%
+%%
+lea %1%, [%2% + %3% + %4%]
+%%
+
+%%
+lea %1:reg%, %:.*% [%2:regmul% + %3%]
+add %1:reg%, %4:const%
+%%
+lea %1%, [%2% + %3% + %4%]
+%%
+
+##############################
+# FPU
+
+%%
+fst %1%
+fstp st0
+%%
+fstp %1%
+%%
+
+%%
+%1:fpuop% %2%,st0
+fstp st0
+%%
+%1%p %2%,st0
+%%
+
+# etc.
+
+
+
+##################################################
+# peephole - phase 2
+
+%%newphase
+
+# lea + lea -> lea + mov
+
+%%
+lea %1:reg%, %:.*% [%3:reg% + %4:const%]
+lea %5:reg%, %:.*% [%1:reg% + %7:regmul%]
+%%
+lea %5%, [%3%+%7%+%4%]
+mov %1%, %5%
+%%
+
+%%
+lea %1:reg%, %:.*% [%3:reg% + %4:regmul%]
+lea %5:reg%, %:.*% [%1:reg% + %7:const%]
+%%
+lea %5%, [%3% + %4% + %7%]
+mov %1%, %5%
+%%
+
+
+
+
+##################################################
+# peephole - phase 3
+
+%%newphase
+
+# bad lea
+
+%%
+lea %1:reg%, [%1:reg% + %2:reg%]
+%%
+add %1%, %2%
+%%
+
+%%
+lea %1:reg%, [%1:reg% + %2:const]
+%%
+add %1%, %2%
+%%
+
+%%
+lea %1:reg%, [%2:reg% + %1:reg%]
+%%
+add %1%, %2%
+%%
