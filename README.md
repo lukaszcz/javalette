@@ -5,7 +5,9 @@ allocation.
 Requirements
 ============
 * Linux
-* `nasm` assembler to produce x86 executables
+* bison
+* flex
+* nasm assembler to produce x86 executables
 
 Usage
 =====
