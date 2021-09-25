@@ -1,5 +1,12 @@
+# Mac
+.DS_Store
+
 # Prerequisites
 *.d
+.prjconfig
+parse.c
+parse.h
+scan.c
 
 # Object files
 *.o
@@ -35,12 +42,18 @@
 *.i*86
 *.x86_64
 *.hex
+jl
 
 # Debug files
 *.dSYM/
 *.su
 *.idb
 *.pdb
+parse.output
+tests/examples/good/*.asm
+tests/examples/good/*.qua
+tests/out
+tests/test_results
 
 # Kernel Module Compile Results
 *.mod*
