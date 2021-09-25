@@ -1,4 +1,3 @@
-
 #include <map>
 #include <list>
 extern "C"{
@@ -59,7 +58,7 @@ typedef struct Graph_node{
   struct Graph_node *right;
   /* `var_list' contains variables that should be set to the value of
      this node */
-  var_list_t *var_list; 
+  var_list_t *var_list;
   var_t *result;
   /* `result' is a new variable where the value of the node is stored;
      this variable is never modified afterwards */
@@ -177,7 +176,7 @@ static quadr_list_t gencode_for_leaf(graph_node_t *node)
   quadr_list_t lst;
   lst.head = lst.tail = NULL;
   node->result = declare_var(opt_cur_func, arg_type(&node->u.arg));
-  lst_append_quadr(&lst, new_copy_quadr(node->result, node->u.arg));  
+  lst_append_quadr(&lst, new_copy_quadr(node->result, node->u.arg));
   return lst;
 }
 
@@ -290,7 +289,7 @@ static quadr_list_t gencode_for_node(graph_node_t *node)
         {
           if (left->u.arg.tag == QA_INT && right->u.arg.tag == QA_INT)
             {
-              int val;
+              int val = 0;
               int val1, val2;
               val1 = left->u.arg.u.int_val;
               val2 = right->u.arg.u.int_val;
@@ -302,7 +301,7 @@ static quadr_list_t gencode_for_node(graph_node_t *node)
             }
           else if (left->u.arg.tag == QA_DOUBLE  && right->u.arg.tag == QA_DOUBLE)
             {
-              double val;
+              double val = 0.0;
               double val1, val2;
               val1 = left->u.arg.u.double_val;
               val2 = right->u.arg.u.double_val;
@@ -338,7 +337,7 @@ static quadr_list_t gencode_from_graph()
   // block; i.e. they are used before assigned; for each such variable
   // there is a leaf in the graph; this leaf is not necessarily
   // reachable from graph->root
-  for (list<graph_node_t*>::iterator itr = var_leaves.begin(); 
+  for (list<graph_node_t*>::iterator itr = var_leaves.begin();
        itr != var_leaves.end(); ++itr)
     {
       lst2 = gencode_for_leaf(*itr);
@@ -351,13 +350,13 @@ static quadr_list_t gencode_from_graph()
       lst_append(&lst, &lst2);
       node = node->next;
     }
-  for (map<int,graph_node_t*>::iterator itr = int_leaves.begin(); 
+  for (map<int,graph_node_t*>::iterator itr = int_leaves.begin();
        itr != int_leaves.end(); ++itr)
     {
       lst2 = gencode_for_node(itr->second);
       lst_append(&lst, &lst2);
     }
-  for (map<double,graph_node_t*>::iterator itr = double_leaves.begin(); 
+  for (map<double,graph_node_t*>::iterator itr = double_leaves.begin();
        itr != double_leaves.end(); ++itr)
     {
       lst2 = gencode_for_node(itr->second);
@@ -365,7 +364,7 @@ static quadr_list_t gencode_from_graph()
     }
   // now, we haven't updated variables associated with leaves
   // representing `input' variables
-  for (list<graph_node_t*>::iterator itr = var_leaves.begin(); 
+  for (list<graph_node_t*>::iterator itr = var_leaves.begin();
        itr != var_leaves.end(); ++itr)
     {
       lst2 = update_node_vars(*itr);
@@ -512,7 +511,6 @@ static void optimize_local(basic_block_t *block)
       case Q_DIV:
       case Q_MUL:
       case Q_MOD:
-        //      case Q_READ_PTR:
         {
           var_t *var = quadr->result.u.var;
           graph_node_t *res = var_node(var);
@@ -530,19 +528,7 @@ static void optimize_local(basic_block_t *block)
           add_var(node, var);
           set_var_node(var, node);
           break;
-        } // TODO: pointer dereference should have a separate node in
-          // the graph;
-        /*      case Q_GET_ADDR:
-        {
-          var_t *var = quadr->result.u.var;
-          var_t *addr_var = quadr->arg1.u.var;
-          graph_node_t *res = var_node(var);
-          graph_node_t *node = var_node(addr_var);
-          if (node == NULL)
-            {
-              node = new_graph_root_addr();
-            }
-            }*/
+        }
       case Q_COPY:
         {
           graph_node_t *node = get_node(&quadr->arg1);
@@ -599,7 +585,7 @@ static void optimize_local(basic_block_t *block)
 inline static void remove_redundant_copy(int i, quadr_t **qtab)
 {
   quadr_t *quadr = qtab[i];
-  if (quadr != NULL && quadr->op == Q_COPY && quadr->arg1.tag == QA_VAR && 
+  if (quadr != NULL && quadr->op == Q_COPY && quadr->arg1.tag == QA_VAR &&
       quadr->result.u.var == quadr->arg1.u.var)
     {
       free_quadr(quadr);
@@ -715,13 +701,13 @@ static void propagate_forwards(int i, quadr_t **qtab, int qsize, var_t *var0, va
             {
               quadr->arg2.u.var = var1;
             }
-          if (assigned_in_quadr(quadr, var0) && 
+          if (assigned_in_quadr(quadr, var0) &&
               !(quadr->op == Q_COPY && quadr->arg1.tag == QA_VAR &&
                 (quadr->arg1.u.var == var1 || quadr->arg1.u.var == var0)))
             {
               return;
             }
-          if (assigned_in_quadr(quadr, var1) && 
+          if (assigned_in_quadr(quadr, var1) &&
               !(quadr->op == Q_COPY && quadr->arg1.tag == QA_VAR &&
                 (quadr->arg1.u.var == var1 || quadr->arg1.u.var == var0)))
             {
@@ -858,11 +844,10 @@ extern "C" void perform_local_optimizations_2(quadr_func_t *func)
     {
       optimize_local_2(block);
       block = block->next;
-    }  
+    }
 }
 
 extern "C" void perform_global_optimizations(quadr_func_t *func)
 {
   // empty
 }
-

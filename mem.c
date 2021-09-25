@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,84 +8,103 @@
 
 #define ALIGN sizeof(void*)
 #define PNEXT(x) *((void**)(x))
-#define PPREV(x) *((void**)(((char*)(x)) + sizeof(void*)))
 
 static void make_free_list(void **ptr, void **end, int elem_size)
 {
-  void **prev = NULL;
   while (ptr != end)
     {
       void **next = (void**)(((char*)ptr) + elem_size);
-      PNEXT(ptr) = (void*) next;
-      PPREV(ptr) = prev;
-      prev = ptr;
+      PNEXT(ptr) = next;
       ptr = next;
     }
   ptr = (void**)(((char*)end) - elem_size);
   *ptr = NULL;
 }
 
+// size - number of bytes
+static pool_node_t *new_pool_node(size_t size, size_t elem_size)
+{
+  pool_node_t *ret = xmalloc(sizeof(pool_node_t));
+  ret->size = size * elem_size;
+  ret->data = ret->first_free = xmalloc(ret->size);
+  make_free_list((void**)ret->data, (void**)(ret->data + ret->size),
+                 elem_size);
+  ret->next = NULL;
+  ret->next_free = NULL;
+  return ret;
+}
+
+// size - number of elements
 pool_t *new_pool(size_t size, size_t elem_size)
 {
   pool_t *pool = xmalloc(sizeof(pool_t));
-  if (elem_size < 2*sizeof(void*))
-    elem_size = 2*sizeof(void*);
+  if (elem_size < sizeof(void*))
+    elem_size = sizeof(void*);
+  elem_size += ALIGN - 1;
+  elem_size -= elem_size & (ALIGN - 1);
   pool->elem_size = elem_size;
-  /*  elem_size += ALIGN - 1;
-      elem_size -= elem_size % ALIGN;
-  pool->size = size * elem_size;
-  pool->first_free = pool->data = xmalloc(pool->size);
-  make_free_list((void**)pool->data, 
-  (void**)(pool->data + pool->size), elem_size);*/
+  pool->first_free = pool->nodes = new_pool_node(size, elem_size);
   return pool;
 }
 
 void free_pool(pool_t *pool)
 {
+  pool_node_t* node = pool->nodes;
+  while (node != NULL)
+    {
+      pool_node_t* next = node->next;
+      free(node->data);
+      free(node);
+      node = next;
+    }
   free(pool);
 }
 
 void *palloc(pool_t *pool)
 {
-  /*  void *ret;
-  void *prev;
+  pool_node_t *pn = pool->first_free;
+  void *ret;
   void *next;
-  ret = pool->first_free;
-  pool->first_free = next = *((void**)pool->first_free);
-  if (pool->first_free == NULL)
+  ret = pn->first_free;
+  pn->first_free = next = PNEXT(ret);
+  if (pn->first_free == NULL)
     {
-      pool->size <<= 1;
-      pool->data = xrealloc(pool->data, pool->size);
-      make_free_list((void**) (pool->data + (pool->size >> 1)), 
-		     (void**) (pool->data + pool->size), pool->elem_size);
-      pool->first_free = (void*) (pool->data + (pool->size >> 1));
+      pool->first_free = pn->next_free;
+      if (pool->first_free == NULL)
+        {
+          while (pn->next != NULL)
+            {
+              pn = pn->next;
+            }
+          pn->next = new_pool_node(pn->size << 1, pool->elem_size);
+          pool->first_free = pn->next;
+        }
     }
-  prev = PPREV(ret);
-  if (prev != NULL)
-    {
-      PNEXT(prev) = next;
-    }
-  if (next != NULL)
-    {
-      PPREV(next) = prev;
-      }
-  return ret;*/
-  return xmalloc(pool->elem_size);
+  return ret;
 }
 
 void pfree(pool_t *pool, void *ptr)
 {
-  /*  void *next = pool->first_free;
-  PNEXT(ptr) = next;
-  PPREV(ptr) = NULL;
-  if (next != NULL)
+  pool_node_t *pn = pool->nodes;
+  while (pn != NULL)
     {
-      PPREV(next) = ptr;
+      if ((char*)ptr >= (char*)pn->data && (char*)ptr < (char*)pn->data + pn->size)
+        {
+          break;
+        }
+      pn = pn->next;
     }
-    pool->first_free = ptr;*/
-  free(ptr);
+  assert (pn != NULL);
+  void *next = pn->first_free;
+  PNEXT(ptr) = next;
+  pn->first_free = ptr;
+  if (next == NULL)
+    { // was full before - insert at the head of the free pool node
+      // list
+      pn->next_free = pool->first_free;
+      pool->first_free = pn;
+    }
 }
-
 
 /* alloc_t */
 
@@ -157,11 +175,11 @@ static unsigned fnv_hash(const char *str)
      */
     while (*s) {
 
-	/* multiply by the 32 bit FNV magic prime mod 2^32 */
-	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+        /* multiply by the 32 bit FNV magic prime mod 2^32 */
+        hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
 
-	/* xor the bottom with the current octet */
-	hval ^= (unsigned)*s++;
+        /* xor the bottom with the current octet */
+        hval ^= (unsigned)*s++;
     }
 
     return hval;
@@ -182,9 +200,9 @@ strtab_t *new_strtab(size_t strings_size, size_t data_size, size_t data_elem_siz
   while (hash_size > 0)
     {
       if (hash_size & 1)
-	{
-	  carry = 1;
-	}
+        {
+          carry = 1;
+        }
       ++hash_size_log;
       hash_size >>= 1;
     }
@@ -230,22 +248,22 @@ int add_str(strtab_t *strtab, const char* str, char **pstr, void **pdata)
     {
       hash_node_t *prev;
       while (node != NULL)
-	{
-	  if (node->hash == hash && strcmp(node->str, str) == 0)
-	    {
-	      if (pstr != NULL)
-		{
-		  *pstr = node->str;
-		}
-	      if (pdata != NULL)
-		{
-		  *pdata = node->data;
-		}
-	      return 0;
-	    }
-	  prev = node;
-	  node = node->next;
-	}
+        {
+          if (node->hash == hash && strcmp(node->str, str) == 0)
+            {
+              if (pstr != NULL)
+                {
+                  *pstr = node->str;
+                }
+              if (pdata != NULL)
+                {
+                  *pdata = node->data;
+                }
+              return 0;
+            }
+          prev = node;
+          node = node->next;
+        }
       node = new_hash_node(strtab);
       prev->next = node;
     }
@@ -256,7 +274,7 @@ int add_str(strtab_t *strtab, const char* str, char **pstr, void **pdata)
   node->str = alloc(strtab->strbuf, strlen(str) + 1);
   strcpy(node->str, str);
   node->data = alloc(strtab->databuf, strtab->elem_size);
-  
+
   if (pstr != NULL)
     {
       *pstr = node->str;
@@ -267,4 +285,3 @@ int add_str(strtab_t *strtab, const char* str, char **pstr, void **pdata)
     }
   return 1;
 }
-

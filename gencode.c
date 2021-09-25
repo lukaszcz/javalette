@@ -111,11 +111,6 @@ inline static stack_elem_t *new_stack_elem()
   return palloc(stack_elem_pool);
 }
 
-inline static void free_stack_elem(stack_elem_t *el)
-{
-  pfree(stack_elem_pool, el);
-}
-
 static void v_init_loc(loc_t *loc, loc_tag_t tag, va_list ap)
 {
   loc->tag = tag;
@@ -291,7 +286,6 @@ static void stack_erase(stack_elem_t *se, var_t *var)
   vl_erase(&se->vars, var);
   if (se->vars == NULL && (first_stack_free == NULL || first_stack_free->offset > se->offset))
     {
-      //stack_elem_t *next;
       first_stack_free = se;
       /*  next = se->next;
       while (next != NULL && next->vars == NULL)
@@ -1063,7 +1057,7 @@ void gencode(quadr_func_t *func)
     {
       stack_elem_t *next = stack->next;
       free_var_list(stack->vars);
-      free(stack);
+      pfree(stack_elem_pool, stack);
       stack = next;
     }
 }
@@ -1805,6 +1799,7 @@ void swap_loc(loc_t *loc1, loc_t *loc2)
     break;
   default:
     xabort("swap_loc()");
+    return;
   };
   switch (loc2->tag){
   case LOC_STACK:

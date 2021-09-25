@@ -11,8 +11,9 @@
 typedef struct Pool_node{
   size_t size;
   char *data;
-  void *first_free;
+  char *first_free;
   struct Pool_node *next;
+  struct Pool_node *next_free;
 } pool_node_t;
 
 typedef struct{

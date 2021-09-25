@@ -1,4 +1,3 @@
-
 %locations
 %pure-parser
 %parse-param {node_t **pnode}
@@ -75,7 +74,7 @@
 
   extern YY_DECL;
 
-  inline src_pos_t make_pos(YYLTYPE l1, YYLTYPE l2)
+  inline static src_pos_t make_pos(YYLTYPE l1, YYLTYPE l2)
   {
     src_pos_t ret;
     ret.line = l1.first_line;
@@ -90,7 +89,7 @@
 program:  /* empty */ { *pnode = NULL; }
         | func_list   { *pnode = (node_t*) $1.first; }
         | error { *pnode = NULL; }
-	;
+        ;
 
 func_list:  func { $$.first = $$.last = (func_t*) $1; }
           | func_list func { $$ = $1; $$.last->next = (func_t*) $2; $$.last = (func_t*) $2; }
@@ -115,7 +114,7 @@ maybe_instr_list:  /* empty */ { $$ = NULL; }
 
 instr_list:   instr { $$.first = $$.last = (instr_t*) $1; }
             | instr_list instr { $$ = $1; $$.last->next = (instr_t*) $2; $$.last = (instr_t*) $2; }
-	    ;
+            ;
 
 instr:  ';' { $$ = new_node(NODE_INSTR, make_pos(@1, @1), NULL); }
       | block { $$ = $1; }
@@ -159,7 +158,7 @@ if_instr:  IF '(' expr ')' instr { $$ = new_node(NODE_IF, make_pos(@1, @5), $3, 
 
 while_instr:  WHILE '(' expr ')' instr { $$ = new_node(NODE_WHILE, make_pos(@1, @5), $3, $5); }
 
-for_instr:  FOR '(' assignment ';' expr ';' assignment ')' instr { 
+for_instr:  FOR '(' assignment ';' expr ';' assignment ')' instr {
   $$ = new_node(NODE_FOR, make_pos(@1, @9), $3, $5, $7, $9); }
 
 return_instr:  RETURN expr { $$ = new_node(NODE_RETURN, make_pos(@1, @2), $2); }
@@ -197,8 +196,8 @@ maybe_expr_list:  /* empty */ { $$ = NULL; }
                 ;
 
 expr_list:  expr { $$.first = $$.last = (expr_list_t*) new_node(NODE_EXPR_LIST, make_pos(@1, @1), $1); }
-          | expr_list ',' expr 
-{ $$ = $1; $$.last->next = (expr_list_t*) new_node(NODE_EXPR_LIST, make_pos(@3, @3), $3); 
+          | expr_list ',' expr
+{ $$ = $1; $$.last->next = (expr_list_t*) new_node(NODE_EXPR_LIST, make_pos(@3, @3), $3);
   $$.last = $$.last->next; }
           ;
 
