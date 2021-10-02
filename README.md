@@ -6,7 +6,7 @@ Features
 ========
 * Two backends: 32bit x86 assembly and quadruple code.
 * Liveness analysis.
-* Register allocation with the Belady's algorithm.
+* Register allocation with Belady's algorithm.
 * Local basic block optimisations: constant folding, common
   subexpression elimination, copy propagation.
 * Frame pointer omission optimisation.
@@ -37,6 +37,6 @@ A more detailed documentation is available in [`doc/doc.pdf`](doc/doc.pdf) (in P
 Copyright and license
 =====================
 
-Copyright (C) 2008-2021 by Lukasz Czajka
+Copyright (C) 2008-2021 by Lukasz Czajka.
 
 Distributed under the MIT license. See the [LICENSE](LICENSE) file.

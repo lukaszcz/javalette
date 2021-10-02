@@ -856,7 +856,7 @@ static void gencode_for_block(basic_block_t *block)
     {
       quadr = qdstack[i].quadr = qstack[i];
       qdstack[i].mark = 0;
-      // por. flow.c::analyze_liveness()
+      // compare: flow.c::analyze_liveness()
       if (quadr->result.tag == QA_VAR && assigned_in_quadr(quadr, quadr->result.u.var) &&
           quadr->result.u.var->live)
         {

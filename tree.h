@@ -11,6 +11,7 @@
 
 void tree_init();
 void tree_cleanup();
+void strings_cleanup();
 
 /* Source file locations */
 
@@ -148,7 +149,7 @@ typedef struct{
   src_pos_t src_pos;
   type_t *type;
 
-  char *value; // TODO: potential memory leak - correct it
+  char *value;
 } str_t;
 
 // new_node(NODE_IDENT, sym_t *ident)

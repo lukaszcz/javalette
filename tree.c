@@ -21,6 +21,10 @@ static alloc_t *alc = NULL;
 static void decl_init();
 static void decl_cleanup();
 
+#define MAX_STRINGS_NUM 1024
+
+static int strings_num = 0;
+static char* strings[MAX_STRINGS_NUM];
 
 void tree_init()
 {
@@ -32,6 +36,15 @@ void tree_cleanup()
 {
   decl_cleanup();
   free_alloc(alc);
+}
+
+void strings_cleanup()
+{
+  int i;
+  for (i = 0; i < strings_num; ++i)
+    {
+      free(strings[i]);
+    }
 }
 
 /****************************************************/
@@ -105,6 +118,12 @@ node_t *new_node(node_type_t type, src_pos_t src_pos, ...)
       node->value = va_arg(ap, char*);
       node->type = NULL;
       result = (node_t*) node;
+      if (strings_num == MAX_STRINGS_NUM)
+        {
+          xabort("too many strings");
+        }
+      strings[strings_num] = node->value;
+      ++strings_num;
       break;
     }
 
@@ -374,6 +393,11 @@ static void push_scope()
   scopes[cur_scope] = decls_free;
 }
 
+static void free_decl(decl_t* decl)
+{
+  pfree(decl_pool, decl);
+}
+
 static void pop_scope()
 {
   int i;
@@ -382,7 +406,7 @@ static void pop_scope()
     {
       decl_t *decl = decls[i]->decl;
       decls[i]->decl = decl->prev;
-      pfree(decl_pool, decl);
+      free_decl(decl);
     }
   decls_free = scopes[cur_scope];
   --cur_scope;
@@ -401,6 +425,7 @@ void declare(sym_t *sym, type_t *type, src_pos_t src_pos)
   decl->type = type;
   decl->initialized = false;
   decl->prev = sym->decl;
+  decl->u.func = NULL;
   sym->decl = decl;
   if (decls_free == decls_size)
     {

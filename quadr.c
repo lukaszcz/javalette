@@ -15,7 +15,7 @@ static quadr_arg_t quadr_arg_var(var_t *var);
 //--------------------------------------------------------------------
 
 quadr_func_t *quadr_func = NULL;
-int func_num = -1;
+int func_num = 0;
 static int func_cap = 0;
 
 static pool_t *quadr_pool = NULL;
@@ -780,12 +780,12 @@ quadr_func_t *declare_function(func_type_t *type, quadr_func_tag_t tag, const ch
   quadr_func_t *qf;
   assert (type != NULL);
   assert (type->cons == TYPE_FUNC);
-  if (func_num + 1 >= func_cap)
+  if (func_num >= func_cap)
     {
       xabort("too many functions");
     }
-  ++func_num;
   qf = &quadr_func[func_num];
+  ++func_num;
   qf->type = type;
   qf->blocks = NULL;
   qf->tag = tag;
@@ -830,6 +830,7 @@ var_t *declare_var(quadr_func_t *func, type_t *type)
   var->type = type;
   var->size = -1;
   var->loc = NULL;
+  var->live = false;
   switch (type->cons){
   case TYPE_BOOLEAN: // fall through
   case TYPE_INT:

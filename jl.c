@@ -206,6 +206,7 @@ int main(int argc, char **argv)
   declare_builtins();
 
   yyparse(&program);
+  fclose(yyin);
   if (errors_num != 0)
     {
       xabort("syntax errors - aborting");
@@ -233,7 +234,7 @@ int main(int argc, char **argv)
         }
       prepare_backend();
       gencode_init();
-      for (i = 0; i <= func_num; ++i)
+      for (i = 0; i < func_num; ++i)
         {
           quadr_func_t *func = &quadr_func[i];
           if (func->tag == QF_USER_DEFINED)
@@ -260,5 +261,6 @@ int main(int argc, char **argv)
   quadr_cleanup();
   types_cleanup();
   symtab_cleanup();
+  strings_cleanup();
   return 0;
 }

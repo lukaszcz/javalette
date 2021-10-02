@@ -798,7 +798,7 @@ static void optimize_local_2(basic_block_t *block)
 
   quadr_t *lst = NULL;
   i = qsize - 1;
-  while (qtab[i] == NULL && i >= 0)
+  while (i >= 0 && qtab[i] == NULL)
     {
       --i;
     }
