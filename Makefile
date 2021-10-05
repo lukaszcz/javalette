@@ -1,21 +1,28 @@
 # CMakefile: generic automatic Makefile for C and C++
+#
+# Copyright (C) 2008-2021 by Lukasz Czajka.
+#
+# Distributed under the MIT license. See the bottom of this file.
+#
 
-lsdirs = $(foreach dir,$(2),$(foreach file,$(wildcard $(dir)/*.$(1)),$(file)))
-
-CAT_PROJECT := (if [ -f PROJECT ]; then cat PROJECT; else echo ""; fi)
+WORD := [[:alpha:]]*[[:space:]][[:space:]]*
+CAT_PROJECT := (if [ -f PROJECT ]; then cat PROJECT | sed "s/^\#.*//"; else echo ""; fi)
 
 mstrip = $(patsubst [[:space:]]*%[[:space:]]*,%,$(1))
+lsdirs = $(foreach dir,$(2),$(foreach file,$(wildcard $(dir)/*.$(1)),$(file)))
+
 getopt = $(call mstrip,$(shell $(CAT_PROJECT) | sed -n "s/^[[:space:]]*$(1)[[:space:]]*=[[:space:]]*\(.*\)/\1/p"))
+getpopt = $(call mstrip,$(shell $(CAT_PROJECT) | sed -n "s/^[[:space:]]*\($(WORD)\)*$(1)[[:space:]][[:space:]]*\($(WORD)\)*$(2)[[:space:]]*=[[:space:]]*\(.*\)/\3/p"))
+
+PREFIX   := $(CONFIG)[[:space:]][[:space:]]*
 
 CONFIG   := $(call getopt,CONFIG)
 ifeq ($(CONFIG),)
-PREFIX   :=
 getcopt = $(call getopt,$(1))
 getropt = $(call getopt,$(1))
 else
-PREFIX   := $(CONFIG)[[:space:]][[:space:]]*
-getcopt = $(call mstrip,$(call getopt,$(1)) $(call getopt,$(PREFIX)$(1)))
-getropt = $(if $(call getopt,$(PREFIX)$(1)),$(call getopt,$(PREFIX)$(1)),$(call getopt,$(1)))
+getcopt = $(call mstrip,$(call getopt,$(1)) $(call getpopt,$(CONFIG),$(1)))
+getropt = $(if $(call getpopt,$(CONFIG),$(1)),$(call getpopt,$(CONFIG),$(1)),$(call getopt,$(1)))
 endif
 # getcopt gets a concatenable option; getropt a replaceable option
 
@@ -45,9 +52,12 @@ CXXDEPFLAGS := $(call getcopt,CXXDEPFLAGS)
 ifeq ($(strip $(CXXDEPFLAGS)),)
 CXXDEPFLAGS   := $(CXXFLAGS)
 endif
-CLDFLAGS    := $(call getcopt,CLDFLAGS)
+CCLDFLAGS   := $(call getcopt,CCLDFLAGS)
 CXXLDFLAGS  := $(call getcopt,CXXLDFLAGS)
 YFLAGS      := $(call getcopt,YFLAGS)
+ifeq ($(strip $(YFLAGS)),)
+YFLAGS	    := -d
+endif
 LEXFLAGS    := $(call getcopt,LEXFLAGS)
 LIBFLAGS    := $(call getcopt,LIBFLAGS)
 ifeq ($(strip $(LIBFLAGS)),)
@@ -102,21 +112,23 @@ endif
 # library to create
 LIB	    := $(call getropt,LIB)
 # programs to create
-PROGRAMS     := $(call getcopt,PROGRAMS)
-# subdirectories
+PROGRAMS     := $(patsubst %,$(BUILDDIR)$(SRCDIR)%,$(call getcopt,PROGRAMS))
+# subdirectories of the source directory
 SUBDIRS     := $(call getcopt,SUBDIRS)
 override SUBDIRS := $(patsubst %,$(SRCDIR)%,$(SUBDIRS))
+# files to ignore
+IGNORE	    := $(patsubst %,$(SRCDIR)%,$(call getcopt,IGNORE))
 # source files
-YSOURCES    := $(strip $(wildcard $(SRCDIR)*.y) $(call lsdirs,y,$(SUBDIRS)))
-LEXSOURCES  := $(strip $(wildcard $(SRCDIR)*.lex) $(call lsdirs,lex,$(SUBDIRS)))
+YSOURCES    := $(filter-out $(IGNORE),$(wildcard $(SRCDIR)*.y) $(call lsdirs,y,$(SUBDIRS)))
+LEXSOURCES  := $(filter-out $(IGNORE),$(wildcard $(SRCDIR)*.lex) $(call lsdirs,lex,$(SUBDIRS)))
 CYSOURCES   := $(patsubst %.y,$(BUILDDIR)%.c,$(YSOURCES))
 HYSOURCES   := $(patsubst %.y,$(BUILDDIR)%.h,$(YSOURCES))
 CLEXSOURCES := $(patsubst %.lex,$(BUILDDIR)%.c,$(LEXSOURCES))
-CSOURCES    := $(filter-out $(CYSOURCES) $(CLEXSOURCES),$(strip $(sort $(wildcard $(SRCDIR)*.c) $(call lsdirs,c,$(SUBDIRS)))))
-ALLCSOURCES := $(strip $(CSOURCES) $(CYSOURCES) $(CLEXSOURCES))
-CPPSOURCES  := $(strip $(wildcard $(SRCDIR)*.cpp) $(call lsdirs,cpp,$(SUBDIRS)))
-CXXSOURCES  := $(strip $(wildcard $(SRCDIR)*.cxx) $(call lsdirs,cxx,$(SUBDIRS)))
-CCSOURCES  := $(strip $(wildcard $(SRCDIR)*.cc) $(call lsdirs,cc,$(SUBDIRS)))
+CSOURCES    := $(filter-out $(IGNORE) $(CYSOURCES) $(CLEXSOURCES),$(strip $(sort $(wildcard $(SRCDIR)*.c) $(call lsdirs,c,$(SUBDIRS)))))
+ALLCSOURCES := $(filter-out $(IGNORE),$(strip $(CSOURCES) $(CYSOURCES) $(CLEXSOURCES)))
+CPPSOURCES  := $(filter-out $(IGNORE),$(strip $(wildcard $(SRCDIR)*.cpp) $(call lsdirs,cpp,$(SUBDIRS))))
+CXXSOURCES  := $(filter-out $(IGNORE),$(strip $(wildcard $(SRCDIR)*.cxx) $(call lsdirs,cxx,$(SUBDIRS))))
+CCSOURCES  := $(filter-out $(IGNORE),$(strip $(wildcard $(SRCDIR)*.cc) $(call lsdirs,cc,$(SUBDIRS))))
 ALLCPPSOURCES := $(strip $(CPPSOURCES) $(CXXSOURCES) $(CCSOURCES))
 
 # all object files (sort to remove duplicates, which may exist from
@@ -196,8 +208,10 @@ endif
 ifneq ($(BUILDDIR),)
 $(shell mkdir -p $(BUILDDIR))
 $(shell mkdir -p $(BUILDDIR)$(SRCDIR))
-$(shell for dir in $(patsubst %,$(BUILDDIR)%,$(SUBDIRS)); do mkdir -p $dir; done)
+$(foreach dir,$(patsubst %,$(BUILDDIR)%,$(SUBDIRS)),$(shell mkdir -p $(dir)))
 endif
+
+.PHONY: all depend clean
 
 all: $(DEPENDS) $(OBJECTS) $(PROGRAMS) $(LIB)
 
@@ -233,7 +247,7 @@ $(CCDEPENDS) : $(BUILDDIR)%.d : %.cc
 	printf "\t$(CXX) -c $(CXXFLAGS) -o $(patsubst %.cc,$(BUILDDIR)%.o,$<) $<\n" >> $@
 
 $(CPROGRAMS) : % : $(ALLOBJECTS)
-	$(CCLD) -o $@ $@.o $(OBJECTS) $(CLDFLAGS)
+	$(CCLD) -o $@ $@.o $(OBJECTS) $(CCLDFLAGS)
 
 $(CPPPROGRAMS) : % : $(ALLOBJECTS)
 	$(CXXLD) -o $@  $@.o $(OBJECTS) $(CXXLDFLAGS)
@@ -245,17 +259,43 @@ include $(DEPENDS)
 
 clean:
 	-rm -f $(PROGRAMS) $(ALLOBJECTS) $(DEPENDS) $(LIB) $(CYSOURCES) $(HYSOURCES) $(CLEXSOURCES)
+ifneq ($(wildcard $(BUILDDIR).prjconfig),)
 	-rm $(BUILDDIR).prjconfig
+endif
 ifneq ($(BUILDDIR),)
 	-rm -rf $(BUILDDIR)
 endif
 
+ifneq ($(wildcard PROJECT),)
 Makefile: $(DEPENDS) $(BUILDDIR).prjconfig
 
 $(BUILDDIR).prjconfig: PROJECT
 	-rm -f $(PROGRAMS) $(ALLOBJECTS) $(DEPENDS) $(LIB) $(CYSOURCES) $(HYSOURCES) $(CLEXSOURCES)
 	touch $(BUILDDIR).prjconfig
+else
+Makefile: $(DEPENDS)
+endif
 
 ifneq ($(wildcard Makefile-include),)
 include Makefile-include
 endif
+
+# Copyright (c) 2008-2021 by Lukasz Czajka.
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
