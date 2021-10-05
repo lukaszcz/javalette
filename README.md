@@ -27,7 +27,9 @@ Usage
 * Examples: [`tests/examples`](tests/examples)
 
 Before running the compiler ensure that the `JL_DATA_DIR` environment
-variable is set appropriately, or use the `-d` option.
+variable is set appropriately, or use the `-d` option. The
+`JL_DATA_DIR` variable should point to the `data` directory in the
+source package.
 
 Documentation
 -------------
