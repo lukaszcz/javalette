@@ -7,7 +7,7 @@ do
     b=`basename $f .jl`
     f2=examples/good/$b
     rm $f2 >/dev/null 2>&1
-    ../jl -d../ -O0 -bi386 $f > /dev/null
+    ../jl -d../data -O0 -bi386 $f > /dev/null
     ./test_prog.sh "$f2" examples/good/$b.input examples/good/$b.i386.output
 done
 
@@ -18,6 +18,6 @@ do
     b=`basename $f .jl`
     f2=examples/good/$b
     rm $f2 >/dev/null 2>&1
-    ../jl -d../ -O1 -bi386 $f > /dev/null
+    ../jl -d../data -O1 -bi386 $f > /dev/null
     ./test_prog.sh "$f2" examples/good/$b.input examples/good/$b.i386.output
 done

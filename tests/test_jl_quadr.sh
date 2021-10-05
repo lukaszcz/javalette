@@ -8,7 +8,7 @@ do
     f2=examples/good/$b.qua
     rm $f2 >/dev/null 2>&1
     f2="./iquadr quiet $f2"
-    ../jl -d../ -O0 -bquadr $f > /dev/null
+    ../jl -d../data -O0 -bquadr $f > /dev/null
     ./test_prog.sh "$f2" examples/good/$b.input examples/good/$b.output
 done
 
@@ -20,6 +20,6 @@ do
     f2=examples/good/$b.qua
     rm $f2 >/dev/null 2>&1
     f2="./iquadr quiet $f2"
-    ../jl -d../ -O1 -bquadr $f > /dev/null
+    ../jl -d../data -O1 -bquadr $f > /dev/null
     ./test_prog.sh "$f2" examples/good/$b.input examples/good/$b.output
 done

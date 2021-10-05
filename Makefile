@@ -1,180 +1,260 @@
-# -*- coding: utf-8 -*-
-# Generyczny, automatyczny Makefile, dla C i C++.
+# CMakefile: generic automatic Makefile for C and C++
 
-CONFIG   := $(strip $(shell cat PROJECT | sed -n 's/^[ ]*CONFIG[ ]*=[ ]*\(.*\)/\1/p'))
+lsdirs = $(foreach dir,$(2),$(foreach file,$(wildcard $(dir)/*.$(1)),$(file)))
 
-CC          := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CC[ ]*=[ ]*\(.*\)/\1/p")
-ifeq ($(CC),)
-CC          := $(shell cat PROJECT | sed -n "s/^[ ]*CC[ ]*=[ ]*\(.*\)/\1/p")
+CAT_PROJECT := (if [ -f PROJECT ]; then cat PROJECT; else echo ""; fi)
+
+mstrip = $(patsubst [[:space:]]*%[[:space:]]*,%,$(1))
+getopt = $(call mstrip,$(shell $(CAT_PROJECT) | sed -n "s/^[[:space:]]*$(1)[[:space:]]*=[[:space:]]*\(.*\)/\1/p"))
+
+CONFIG   := $(call getopt,CONFIG)
+ifeq ($(CONFIG),)
+PREFIX   :=
+getcopt = $(call getopt,$(1))
+getropt = $(call getopt,$(1))
+else
+PREFIX   := $(CONFIG)[[:space:]][[:space:]]*
+getcopt = $(call mstrip,$(call getopt,$(1)) $(call getopt,$(PREFIX)$(1)))
+getropt = $(if $(call getopt,$(PREFIX)$(1)),$(call getopt,$(PREFIX)$(1)),$(call getopt,$(1)))
+endif
+# getcopt gets a concatenable option; getropt a replaceable option
+
+CC          := $(call getropt,CC)
 ifeq ($(CC),)
 CC := gcc
 endif
-endif
-CXX	    := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CXX[ ]*=[ ]*\(.*\)/\1/p")
-ifeq ($(CXX),)
-CXX	    := $(shell cat PROJECT | sed -n "s/^[ ]*CXX[ ]*=[ ]*\(.*\)/\1/p")
+CXX	    := $(call getropt,CXX)
 ifeq ($(CXX),)
 CXX := g++
 endif
-endif
-YACC        := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*YACC[ ]*=[ ]*\(.*\)/\1/p")
-ifeq ($(YACC),)
-YACC        := $(shell cat PROJECT | sed -n "s/^[ ]*YACC[ ]*=[ ]*\(.*\)/\1/p")
+YACC        := $(call getropt,YACC)
 ifeq ($(YACC),)
 YACC := bison
 endif
-endif
-LEX         := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*FLEX[ ]*=[ ]*\(.*\)/\1/p")
-ifeq ($(LEX),)
-LEX         := $(shell cat PROJECT | sed -n "s/^[ ]*FLEX[ ]*=[ ]*\(.*\)/\1/p")
+LEX         := $(call getropt,LEX)
 ifeq ($(LEX),)
 LEX := flex
 endif
-endif
-CFLAGS      := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-CFLAGS      := $(strip $(shell cat PROJECT | sed -n "s/^[ ]*CFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(CFLAGS))
-endif
-CXXFLAGS    := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CXXFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-CXXFLAGS    := $(strip $(shell cat PROJECT | sed -n "s/^[ ]*CXXFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(CXXFLAGS))
-endif
-CDEPFLAGS   := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CDEPFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-CDEPFLAGS   := $(strip $(shell cat PROJECT | sed -n "s/^[ ]*CDEPFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(CDEPFLAGS))
-endif
-ifeq ($(CDEPFLAGS),)
+CFLAGS      := $(call getcopt,CFLAGS)
+CXXFLAGS    := $(call getcopt,CXXFLAGS)
+CDEPFLAGS   := $(call getcopt,CDEPFLAGS)
+ifeq ($(strip $(CDEPFLAGS)),)
 CDEPFLAGS   := $(CFLAGS)
 endif
-CXXDEPFLAGS := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CXXDEPFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-CXXDEPFLAGS := $(strip $(shell cat PROJECT | sed -n "s/^[ ]*CXXDEPFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(CXXDEPFLAGS))
-endif
-ifeq ($(CXXDEPFLAGS),)
+CXXDEPFLAGS := $(call getcopt,CXXDEPFLAGS)
+ifeq ($(strip $(CXXDEPFLAGS)),)
 CXXDEPFLAGS   := $(CXXFLAGS)
 endif
-CLDFLAGS    := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CLDFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-CLDFLAGS    := $(shell cat PROJECT | sed -n "s/^[ ]*CLDFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(CLDFLAGS)
+CLDFLAGS    := $(call getcopt,CLDFLAGS)
+CXXLDFLAGS  := $(call getcopt,CXXLDFLAGS)
+YFLAGS      := $(call getcopt,YFLAGS)
+LEXFLAGS    := $(call getcopt,LEXFLAGS)
+LIBFLAGS    := $(call getcopt,LIBFLAGS)
+ifeq ($(strip $(LIBFLAGS)),)
+LIBFLAGS := sru
 endif
-CXXLDFLAGS  := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CXXLDFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-CXXLDFLAGS  := $(shell cat PROJECT | sed -n "s/^[ ]*CXXLDFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(CXXLDFLAGS)
-endif
-YFLAGS      := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*YFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-YFLAGS      := $(shell cat PROJECT | sed -n "s/^[ ]*YFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(YFLAGS)
-endif
-LEXFLAGS    := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*LEXFLAGS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-LEXFLAGS    := $(shell cat PROJECT | sed -n "s/^[ ]*LEXFLAGS[ ]*=[ ]*\(.*\)/\1/p") $(LEXFLAGS)
-endif
-# biblioteka do stworzenia
-LIB	    := $(shell cat PROJECT | sed -n 's/^[ ]*LIB[ ]*=[ ]*\(.*\)/\1/p')
-# podkatalogi
-SUBDIRS     := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*SUBDIRS[ ]*=[ ]*\(.*\)/\1/p")
-ifneq ($(CONFIG),)
-SUBDIRS     := $(shell cat PROJECT | sed -n 's/^[ ]*SUBDIRS[ ]*=[ ]*\(.*\)/\1/p') $(SUBDIRS)
-endif
-# pliki zrodlowe
-YSOURCES    := $(strip $(wildcard *.y))
-LEXSOURCES  := $(strip $(wildcard *.lex))
-CYSOURCES   := $(subst .y,.c,$(YSOURCES))
-HYSOURCES   := $(subst .y,.h,$(YSOURCES))
-CLEXSOURCES := $(subst .lex,.c,$(LEXSOURCES))
-CSOURCES    := $(strip $(sort $(wildcard *.c) $(CYSOURCES) $(CLEXSOURCES)))
-CPPSOURCES  := $(strip $(wildcard *.cpp))
 
-# pliki obiektowe, ktore zawieraja definicje funkcji main
+# source directory
+SRCDIR    := $(call getropt,SRCDIR)
+ifeq ($(SRCDIR),)
+SRCDIR     := $(shell if [ -d src ]; then echo "src/"; else echo ""; fi)
+else
+override SRCDIR     := $(SRCDIR)/
+endif
+ifeq ($(SRCDIR),./)
+BUILDDIR :=
+endif
+ifeq ($(SRCDIR),.//)
+BUILDDIR :=
+endif
+ifneq ($(SRCDIR),)
+INCLUDES := $(call mstrip,-I$(SRCDIR) $(INCLUDES))
+endif
+
+# build directory
+BUILDDIR    := $(call getropt,BUILDDIR)
+ifeq ($(BUILDDIR),)
+BUILDDIR     := _build/
+else
+override BUILDDIR     := $(BUILDDIR)/
+endif
+ifeq ($(BUILDDIR),./)
+BUILDDIR :=
+endif
+ifeq ($(BUILDDIR),.//)
+BUILDDIR :=
+endif
+ifneq ($(BUILDDIR),)
+INCLUDES := $(call mstrip,-I$(BUILDDIR)$(SRCDIR) $(INCLUDES))
+ifeq ($(SRCDIR),)
+INCLUDES := $(call mstrip,-I. $(INCLUDES))
+endif
+endif
+
+# update flags
+ifneq ($(INCLUDES),)
+CFLAGS := $(INCLUDES) $(CFLAGS)
+CXXFLAGS := $(INCLUDES) $(CXXFLAGS)
+CDEPFLAGS := $(INCLUDES) $(CDEPFLAGS)
+CXXDEPFLAGS := $(INCLUDES) $(CXXDEPFLAGS)
+endif
+
+# library to create
+LIB	    := $(call getropt,LIB)
+# programs to create
+PROGRAMS     := $(call getcopt,PROGRAMS)
+# subdirectories
+SUBDIRS     := $(call getcopt,SUBDIRS)
+override SUBDIRS := $(patsubst %,$(SRCDIR)%,$(SUBDIRS))
+# source files
+YSOURCES    := $(strip $(wildcard $(SRCDIR)*.y) $(call lsdirs,y,$(SUBDIRS)))
+LEXSOURCES  := $(strip $(wildcard $(SRCDIR)*.lex) $(call lsdirs,lex,$(SUBDIRS)))
+CYSOURCES   := $(patsubst %.y,$(BUILDDIR)%.c,$(YSOURCES))
+HYSOURCES   := $(patsubst %.y,$(BUILDDIR)%.h,$(YSOURCES))
+CLEXSOURCES := $(patsubst %.lex,$(BUILDDIR)%.c,$(LEXSOURCES))
+CSOURCES    := $(filter-out $(CYSOURCES) $(CLEXSOURCES),$(strip $(sort $(wildcard $(SRCDIR)*.c) $(call lsdirs,c,$(SUBDIRS)))))
+ALLCSOURCES := $(strip $(CSOURCES) $(CYSOURCES) $(CLEXSOURCES))
+CPPSOURCES  := $(strip $(wildcard $(SRCDIR)*.cpp) $(call lsdirs,cpp,$(SUBDIRS)))
+CXXSOURCES  := $(strip $(wildcard $(SRCDIR)*.cxx) $(call lsdirs,cxx,$(SUBDIRS)))
+CCSOURCES  := $(strip $(wildcard $(SRCDIR)*.cc) $(call lsdirs,cc,$(SUBDIRS)))
+ALLCPPSOURCES := $(strip $(CPPSOURCES) $(CXXSOURCES) $(CCSOURCES))
+
+# all object files (sort to remove duplicates, which may exist from
+# previous builds in a different directory)
+COBJECTS    := $(sort $(patsubst %.c,$(BUILDDIR)%.o,$(CSOURCES)) $(patsubst %.c,%.o,$(CYSOURCES) $(CLEXSOURCES)))
+CPPOBJECTS  := $(patsubst %.cpp,$(BUILDDIR)%.o,$(CPPSOURCES))
+CXXOBJECTS  := $(patsubst %.cxx,$(BUILDDIR)%.o,$(CXXSOURCES))
+CCOBJECTS   := $(patsubst %.cc,$(BUILDDIR)%.o,$(CCSOURCES))
+ALLCPPOBJECTS := $(strip $(CPPOBJECTS) $(CXXOBJECTS) $(CCOBJECTS))
+ALLOBJECTS  := $(strip $(COBJECTS) $(ALLCPPOBJECTS))
+
+# object files which contain the "main" function
 ifneq ($(strip $(CSOURCES)),)
-   CMAINOBJECTS := $(subst .c,.o,$(shell egrep -l 'int[ \n\t]+main[ \n\t]*' $(CSOURCES)))
+   CMAINOBJECTS := $(patsubst %.c,$(BUILDDIR)%.o,$(shell egrep -l '\bint[[:space:]]+main\b' $(CSOURCES)))
 else
    CMAINOBJECTS :=
 endif
 ifneq ($(strip $(CPPSOURCES)),)
-   CPPMAINOBJECTS := $(subst .cpp,.o,$(shell egrep -l 'int[ \n\t]+main[ \n\t]*' $(CPPSOURCES)))
+   CPPMAINOBJECTS := $(patsubst %.cpp,$(BUILDDIR)%.o,$(shell egrep -l '\bint[[:space:]]+main\b' $(CPPSOURCES)))
 else
    CPPMAINOBJECTS :=
 endif
-MAINOBJECTS := $(CMAINOBJECTS) $(CPPMAINOBJECTS)
-# pliki wykonywalne (powstaja ze zrodel zawierajacych definicje main)
-CALL         := $(subst .o,,$(CMAINOBJECTS))
-CPPALL        := $(subst .o,,$(CPPMAINOBJECTS))
-ALL	     := $(subst .o,,$(MAINOBJECTS))
-# zależności dla kazdego z plikow zrodlowych
-CDEPENDS     := $(subst .c,.d,$(CSOURCES))
-CPPDEPENDS     := $(subst .cpp,.d,$(CPPSOURCES))
-DEPENDS := $(sort $(CDEPENDS) $(CPPDEPENDS))
-# wszystkie pliki obiektowe
-ALLCOBJECTS  := $(subst .c,.o,$(CSOURCES))
-ALLCPPOBJECTS  := $(subst .cpp,.o,$(CPPSOURCES))
-ALLOBJECTS := $(ALLCOBJECTS) $(ALLCPPOBJECTS)
-# pliki obiektowe, ktore nie zawieraja definicji main
-COBJECTS	    := $(filter-out $(MAINOBJECTS),$(ALLCOBJECTS))
-CPPOBJECTS	    := $(filter-out $(MAINOBJECTS),$(ALLCPPOBJECTS))
+ifneq ($(strip $(CXXSOURCES)),)
+   CXXMAINOBJECTS := $(patsubst %.cxx,$(BUILDDIR)%.o,$(shell egrep -l 'int[[:space:]]+main\b' $(CXXSOURCES)))
+else
+   CXXMAINOBJECTS :=
+endif
+ifneq ($(strip $(CCSOURCES)),)
+   CCMAINOBJECTS := $(patsubst %.cxx,$(BUILDDIR)%.o,$(shell egrep -l 'int[[:space:]]+main\b' $(CCSOURCES)))
+else
+   CCMAINOBJECTS :=
+endif
+ifneq ($(PROGRAMS),)
+MAINOBJECTS  := $(patsubst %,%.o,$(PROGRAMS))
+CPROGRAMS    := $(filter $(PROGRAMS),$(patsubst %.o,%,$(COBJECTS)))
+CPPPROGRAMS  := $(filter $(PROGRAMS),$(patsubst %.o,%,$(ALLCPPOBJECTS)))
+else ifneq ($(LIB),)
+MAINOBJECTS  :=
+CPROGRAMS    :=
+CPPPROGRAMS  :=
+else
+MAINOBJECTS  := $(CMAINOBJECTS) $(CPPMAINOBJECTS) $(CXXMAINOBJECTS) $(CCMAINOBJECTS)
+CPROGRAMS    := $(patsubst %.o,%,$(CMAINOBJECTS))
+CPPPROGRAMS  := $(patsubst %.o,%,$(CPPMAINOBJECTS)) $(patsubst %.o,%,$(CXXMAINOBJECTS)) $(patsubst %.o,%,$(CCMAINOBJECTS))
+PROGRAMS     := $(patsubst %.o,%,$(MAINOBJECTS))
+endif
+# dependencies for each source file
+CDEPENDS     := $(patsubst %.c,$(BUILDDIR)%.d,$(CSOURCES))
+CYLDEPENDS   := $(patsubst %.c,%.d,$(CYSOURCES)) $(patsubst %.c,%.d,$(CLEXSOURCES))
+CPPDEPENDS   := $(patsubst %.cpp,$(BUILDDIR)%.d,$(CPPSOURCES))
+CXXDEPENDS   := $(patsubst %.cxx,$(BUILDDIR)%.d,$(CXXSOURCES))
+CCDEPENDS    := $(patsubst %.cc,$(BUILDDIR)%.d,$(CCSOURCES))
+DEPENDS := $(sort $(CDEPENDS) $(CYLDEPENDS) $(CPPDEPENDS) $(CXXDEPENDS) $(CCDEPENDS))
+# object files which don't include the "main" function
 OBJECTS	    := $(filter-out $(MAINOBJECTS),$(ALLOBJECTS))
 
-CCLD	    := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CCLD[ ]*=[ ]*\(.*\)/\1/p")
+# linkers
+CCLD	    := $(call getropt,CCLD)
 ifeq ($(CCLD),)
-CCLD	    := $(shell cat PROJECT | sed -n "s/^[ ]*CCLD[ ]*=[ ]*\(.*\)/\1/p")
-endif
-ifeq ($(CCLD),)
-ifeq ($(CPPSOURCES),)
+ifeq ($(ALLCPPSOURCES),)
 CCLD := $(CC)
 else
 CCLD := $(CXX)
 endif
 endif
 
-CXXLD	    := $(shell cat PROJECT | sed -n "s/^[ ]*$(CONFIG)[ _]*CXXLD[ ]*=[ ]*\(.*\)/\1/p")
-ifeq ($(CXXLD),)
-CXXLD	    := $(shell cat PROJECT | sed -n "s/^[ ]*CXXLD[ ]*=[ ]*\(.*\)/\1/p")
-endif
+CXXLD	    := $(call getropt,CXXLD)
 ifeq ($(CXXLD),)
 CXXLD := $(CXX)
 endif
 
+LIBTOOL	    := $(call getropt,LIBTOOL)
+ifeq ($(LIBTOOL),)
+LIBTOOL := ar
+endif
 
-all: $(DEPENDS) $(OBJECTS) $(ALL) $(LIB)
+ifneq ($(BUILDDIR),)
+$(shell mkdir -p $(BUILDDIR))
+$(shell mkdir -p $(BUILDDIR)$(SRCDIR))
+$(shell for dir in $(patsubst %,$(BUILDDIR)%,$(SUBDIRS)); do mkdir -p $dir; done)
+endif
+
+all: $(DEPENDS) $(OBJECTS) $(PROGRAMS) $(LIB)
 
 depend: $(DEPENDS)
 
-$(HYSOURCES) : %.h : %.y
-	$(YACC) $(YFLAGS) -o $(subst .h,.c,$@) $<
+$(HYSOURCES) : $(BUILDDIR)%.h : %.y
+	$(YACC) $(YFLAGS) -o $(patsubst %.h,%.c,$@) $<
 
-$(CYSOURCES) : %.c : %.y
+$(CYSOURCES) : $(BUILDDIR)%.c : %.y
 	$(YACC) $(YFLAGS) -o $@ $<
 
-$(CLEXSOURCES) : %.c : %.lex
+$(CLEXSOURCES) : $(BUILDDIR)%.c : %.lex
 	$(LEX) $(LEXFLAGS) -o $@ $<
 
-$(CDEPENDS) : %.d : %.c
-	$(CC) $(CDEPFLAGS) -MM -MT $(subst .c,.o,$<) $< > $@
-	printf "\t$(CC) -c $(CFLAGS) -o $(subst .c,.o,$<) $<\n" >> $@
+$(CDEPENDS) : $(BUILDDIR)%.d : %.c
+	$(CC) $(CDEPFLAGS) -MM -MT $(patsubst %.c,$(BUILDDIR)%.o,$<) $< > $@
+	printf "\t$(CC) -c $(CFLAGS) -o $(patsubst %.c,$(BUILDDIR)%.o,$<) $<\n" >> $@
 
-$(CPPDEPENDS) : %.d : %.cpp
-	$(CXX) $(CXXDEPFLAGS) -MM -MT $(subst .cpp,.o,$<) $< > $@
-	printf "\t$(CXX) -c $(CXXFLAGS) -o $(subst .cpp,.o,$<) $<\n" >> $@
+$(CYLDEPENDS) : $(BUILDDIR)%.d : $(BUILDDIR)%.c
+	$(CC) $(CDEPFLAGS) -MM -MT $(patsubst %.c,%.o,$<) $< > $@
+	printf "\t$(CC) -c $(CFLAGS) -o $(patsubst %.c,%.o,$<) $<\n" >> $@
 
-$(CALL) : % : $(ALLOBJECTS)
+$(CPPDEPENDS) : $(BUILDDIR)%.d : %.cpp
+	$(CXX) $(CXXDEPFLAGS) -MM -MT $(patsubst %.cpp,$(BUILDDIR)%.o,$<) $< > $@
+	printf "\t$(CXX) -c $(CXXFLAGS) -o $(patsubst %.cpp,$(BUILDDIR)%.o,$<) $<\n" >> $@
+
+$(CXXDEPENDS) : $(BUILDDIR)%.d : %.cxx
+	$(CXX) $(CXXDEPFLAGS) -MM -MT $(patsubst %.cxx,$(BUILDDIR)%.o,$<) $< > $@
+	printf "\t$(CXX) -c $(CXXFLAGS) -o $(patsubst %.cxx,$(BUILDDIR)%.o,$<) $<\n" >> $@
+
+$(CCDEPENDS) : $(BUILDDIR)%.d : %.cc
+	$(CXX) $(CXXDEPFLAGS) -MM -MT $(patsubst %.cc,$(BUILDDIR)%.o,$<) $< > $@
+	printf "\t$(CXX) -c $(CXXFLAGS) -o $(patsubst %.cc,$(BUILDDIR)%.o,$<) $<\n" >> $@
+
+$(CPROGRAMS) : % : $(ALLOBJECTS)
 	$(CCLD) -o $@ $@.o $(OBJECTS) $(CLDFLAGS)
 
-$(CPPALL) : % : $(ALLOBJECTS)
+$(CPPPROGRAMS) : % : $(ALLOBJECTS)
 	$(CXXLD) -o $@  $@.o $(OBJECTS) $(CXXLDFLAGS)
 
 $(LIB) : % : $(OBJECTS)
-	ar sru $@ $(OBJECTS)
+	$(LIBTOOL) $(LIBFLAGS) $@ $(OBJECTS)
 
 include $(DEPENDS)
 
 clean:
-	-rm -f $(ALL) $(ALLOBJECTS) $(DEPENDS) $(LIB) $(CYSOURCES) $(HYSOURCES) $(CLEXSOURCES)
+	-rm -f $(PROGRAMS) $(ALLOBJECTS) $(DEPENDS) $(LIB) $(CYSOURCES) $(HYSOURCES) $(CLEXSOURCES)
+	-rm $(BUILDDIR).prjconfig
+ifneq ($(BUILDDIR),)
+	-rm -rf $(BUILDDIR)
+endif
 
-Makefile: $(DEPENDS) .prjconfig
+Makefile: $(DEPENDS) $(BUILDDIR).prjconfig
 
-.prjconfig: PROJECT
-	-rm -f $(ALL) $(ALLOBJECTS) $(DEPENDS)
-	touch .prjconfig
+$(BUILDDIR).prjconfig: PROJECT
+	-rm -f $(PROGRAMS) $(ALLOBJECTS) $(DEPENDS) $(LIB) $(CYSOURCES) $(HYSOURCES) $(CLEXSOURCES)
+	touch $(BUILDDIR).prjconfig
 
 ifneq ($(wildcard Makefile-include),)
 include Makefile-include

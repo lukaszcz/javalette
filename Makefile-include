@@ -1,6 +1,8 @@
 test: all
+	cp $(BUILDDIR)src/jl .
 	cd tests && ./test_jl.sh
-scan.lex: parse.h
+	-rm jl
+src/scan.lex: $(BUILDDIR)src/parse.h
 
 clean-test:
 	-rm -f tests/examples/good/*.o tests/examples/good/*.qua tests/examples/good/*.asm \
